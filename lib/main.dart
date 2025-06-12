@@ -25,7 +25,7 @@ class ScreenTimeOracleApp extends StatelessWidget {
 
 class OraclePage extends StatefulWidget {
   const OraclePage({super.key, this.testMode = false});
-  
+
   final bool testMode; // Disable real screen time access during testing
 
   @override
@@ -91,6 +91,7 @@ class _OraclePageState extends State<OraclePage> with TickerProviderStateMixin {
     _animationController.dispose();
     super.dispose();
   }
+
   Future<void> _loadScreenTime() async {
     setState(() {
       _isLoading = true;
@@ -104,7 +105,7 @@ class _OraclePageState extends State<OraclePage> with TickerProviderStateMixin {
         // Try to get real screen time data first
         if (ScreenTimeService.isRealScreenTimeSupported) {
           bool hasPermission = await ScreenTimeService.requestPermissions();
-          
+
           if (hasPermission) {
             int realScreenTime = await ScreenTimeService.getTodayScreenTime();
             setState(() {
@@ -129,7 +130,7 @@ class _OraclePageState extends State<OraclePage> with TickerProviderStateMixin {
     setState(() {
       _isLoading = false;
     });
-    
+
     _generateOracleMessage();
   }
 
