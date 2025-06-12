@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:math';
+import 'services/screen_time_service.dart';
 
 void main() {
   runApp(const ScreenTimeOracleApp());
@@ -23,7 +24,9 @@ class ScreenTimeOracleApp extends StatelessWidget {
 }
 
 class OraclePage extends StatefulWidget {
-  const OraclePage({super.key});
+  const OraclePage({super.key, this.testMode = false});
+  
+  final bool testMode; // Disable real screen time access during testing
 
   @override
   State<OraclePage> createState() => _OraclePageState();
@@ -33,6 +36,9 @@ class _OraclePageState extends State<OraclePage> with TickerProviderStateMixin {
   int _screenTimeMinutes = 0;
   String _currentMessage = "";
   String _currentCategory = "";
+  bool _isUsingRealData = false;
+  bool _isLoading = true;
+  String _dataSource = "Mock Data";
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
 
@@ -85,13 +91,55 @@ class _OraclePageState extends State<OraclePage> with TickerProviderStateMixin {
     _animationController.dispose();
     super.dispose();
   }
-
   Future<void> _loadScreenTime() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      // Use mock data in test mode
+      if (widget.testMode) {
+        await _loadMockData();
+      } else {
+        // Try to get real screen time data first
+        if (ScreenTimeService.isRealScreenTimeSupported) {
+          bool hasPermission = await ScreenTimeService.requestPermissions();
+          
+          if (hasPermission) {
+            int realScreenTime = await ScreenTimeService.getTodayScreenTime();
+            setState(() {
+              _screenTimeMinutes = realScreenTime;
+              _isUsingRealData = true;
+              _dataSource = "Real Device Data";
+            });
+          } else {
+            // Fall back to saved mock data
+            await _loadMockData();
+          }
+        } else {
+          // Platform doesn't support real data, use mock
+          await _loadMockData();
+        }
+      }
+    } catch (e) {
+      print('Error loading screen time: $e');
+      await _loadMockData();
+    }
+
+    setState(() {
+      _isLoading = false;
+    });
+    
+    _generateOracleMessage();
+  }
+
+  Future<void> _loadMockData() async {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
       _screenTimeMinutes = prefs.getInt('screen_time_minutes') ?? 45;
+      _isUsingRealData = false;
+      _dataSource = "Mock Data";
     });
-    _generateOracleMessage();
   }
 
   Future<void> _saveScreenTime() async {
@@ -178,6 +226,24 @@ class _OraclePageState extends State<OraclePage> with TickerProviderStateMixin {
     }
   }
 
+  Future<void> _requestPermissions() async {
+    bool hasPermission = await ScreenTimeService.requestPermissions();
+    if (hasPermission) {
+      _loadScreenTime();
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Please enable Usage Access in Settings to get real screen time data',
+            ),
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -187,12 +253,13 @@ class _OraclePageState extends State<OraclePage> with TickerProviderStateMixin {
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         elevation: 0,
       ),
-      body: Center(
+      body: SingleChildScrollView(
         child: Padding(
           padding: const EdgeInsets.all(24.0),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
+              const SizedBox(height: 20), // Add some top spacing
               // Screen Time Display
               Container(
                 padding: const EdgeInsets.all(24),
@@ -216,14 +283,41 @@ class _OraclePageState extends State<OraclePage> with TickerProviderStateMixin {
                         fontWeight: FontWeight.w500,
                       ),
                     ),
-                    const SizedBox(height: 12),
-                    Text(
-                      _formatTime(_screenTimeMinutes),
-                      style: TextStyle(
-                        fontSize: 48,
-                        fontWeight: FontWeight.bold,
-                        color: _getCategoryColor(),
+                    const SizedBox(height: 8),
+                    if (_isLoading)
+                      const CircularProgressIndicator()
+                    else
+                      Text(
+                        _formatTime(_screenTimeMinutes),
+                        style: TextStyle(
+                          fontSize: 48,
+                          fontWeight: FontWeight.bold,
+                          color: _getCategoryColor(),
+                        ),
                       ),
+                    const SizedBox(height: 8),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          _isUsingRealData ? Icons.smartphone : Icons.science,
+                          size: 16,
+                          color: _isUsingRealData
+                              ? Colors.green
+                              : Colors.orange,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          _dataSource,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: _isUsingRealData
+                                ? Colors.green
+                                : Colors.orange,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
@@ -272,9 +366,7 @@ class _OraclePageState extends State<OraclePage> with TickerProviderStateMixin {
                 ),
               ),
 
-              const SizedBox(height: 32),
-
-              // Action Buttons
+              const SizedBox(height: 32), // Action Buttons
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
@@ -283,6 +375,19 @@ class _OraclePageState extends State<OraclePage> with TickerProviderStateMixin {
                     icon: const Icon(Icons.refresh),
                     label: const Text('New\nProphecy'),
                     style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
+                    ),
+                  ),
+                  ElevatedButton.icon(
+                    onPressed: _loadScreenTime,
+                    icon: const Icon(Icons.update),
+                    label: const Text('Refresh\nData'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.blue,
+                      foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(
                         horizontal: 16,
                         vertical: 12,
@@ -302,6 +407,15 @@ class _OraclePageState extends State<OraclePage> with TickerProviderStateMixin {
                       ),
                     ),
                   ),
+                ],
+              ),
+
+              const SizedBox(height: 16),
+
+              // Secondary actions
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
                   ElevatedButton.icon(
                     onPressed: _resetScreenTime,
                     icon: const Icon(Icons.restart_alt),
@@ -315,6 +429,21 @@ class _OraclePageState extends State<OraclePage> with TickerProviderStateMixin {
                       ),
                     ),
                   ),
+                  if (!_isUsingRealData &&
+                      ScreenTimeService.isRealScreenTimeSupported)
+                    ElevatedButton.icon(
+                      onPressed: _requestPermissions,
+                      icon: const Icon(Icons.security),
+                      label: const Text('Enable\nReal Data'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 12,
+                        ),
+                      ),
+                    ),
                 ],
               ),
             ],
