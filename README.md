@@ -120,6 +120,14 @@ This project demonstrates:
 
 ## Troubleshooting 🔧
 
+### Build Issues (Android)
+1. **NDK Version Error**: 
+   - The app specifies NDK version `27.0.12077973`
+   - Install via Android Studio SDK Manager if needed
+2. **Minimum SDK Version**: 
+   - Requires Android API 22+ for usage stats
+   - Excludes devices running Android 5.0 and below
+
 ### "No Real Data" on Android
 1. Check if Usage Access permission is granted
 2. Try the "Enable Real Data" button
