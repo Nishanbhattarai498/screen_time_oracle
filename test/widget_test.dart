@@ -1,0 +1,64 @@
+// This is a basic Flutter widget test.
+//
+// To perform an interaction with a widget in your test, use the WidgetTester
+// utility in the flutter_test package. For example, you can send tap and scroll
+// gestures. You can also use WidgetTester to find child widgets in the widget
+// tree, read text, and verify that the values of widget properties are correct.
+
+import 'package:flutter_test/flutter_test.dart';
+
+import 'package:screen_time_oracle/main.dart';
+
+void main() {
+  testWidgets('Screen Time Oracle app smoke test', (WidgetTester tester) async {
+    // Build our app and trigger a frame.
+    await tester.pumpWidget(const ScreenTimeOracleApp());
+
+    // Wait for the app to load
+    await tester.pumpAndSettle();
+
+    // Verify that our app title is present
+    expect(find.text('📱 Screen Time Oracle'), findsOneWidget);
+
+    // Verify that screen time display is present
+    expect(find.text('Today\'s Screen Time'), findsOneWidget);
+
+    // Verify that oracle message container is present
+    expect(find.text('🔮 The Oracle Speaks:'), findsOneWidget);
+
+    // Verify that action buttons are present
+    expect(find.text('New\nProphecy'), findsOneWidget);
+    expect(find.text('Add\nTime'), findsOneWidget);
+    expect(find.text('Reset\nDay'), findsOneWidget);
+  });
+
+  testWidgets('Button interactions work', (WidgetTester tester) async {
+    // Build our app and trigger a frame.
+    await tester.pumpWidget(const ScreenTimeOracleApp());
+
+    // Wait for the app to load
+    await tester.pumpAndSettle();
+
+    // Tap the "Add Time" button
+    await tester.tap(find.text('Add\nTime'));
+    await tester.pumpAndSettle();
+
+    // The screen time should have increased (we can't predict exact value due to randomness)
+    // But we can verify the UI still works
+    expect(find.text('📱 Screen Time Oracle'), findsOneWidget);
+
+    // Tap the "New Prophecy" button
+    await tester.tap(find.text('New\nProphecy'));
+    await tester.pumpAndSettle();
+
+    // Verify oracle message is still present
+    expect(find.text('🔮 The Oracle Speaks:'), findsOneWidget);
+
+    // Tap the "Reset Day" button
+    await tester.tap(find.text('Reset\nDay'));
+    await tester.pumpAndSettle();
+
+    // Verify the app still functions
+    expect(find.text('0m'), findsOneWidget);
+  });
+}
