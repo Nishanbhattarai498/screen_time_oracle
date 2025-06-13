@@ -118,29 +118,6 @@ This project demonstrates:
 - **UI Animations**: Smooth transitions and user feedback
 - **Testing**: Widget tests with mock data and edge cases
 
-## Troubleshooting 🔧
 
-### Build Issues (Android)
-1. **NDK Version Error**: 
-   - The app specifies NDK version `27.0.12077973`
-   - Install via Android Studio SDK Manager if needed
-2. **Minimum SDK Version**: 
-   - Requires Android API 22+ for usage stats
-   - Excludes devices running Android 5.0 and below
-
-### "No Real Data" on Android
-1. Check if Usage Access permission is granted
-2. Try the "Enable Real Data" button
-3. Manually enable in Settings → Privacy → Usage Access
-
-### Tests Failing
-- Tests use mock data to avoid permission issues
-- Use `testMode: true` parameter for reliable testing
-
-### Large Screen Time Values
-- Android sometimes returns inflated values
-- App automatically caps at 24 hours and falls back to mock data
-
----
 
 **Made with ❤️ and a healthy dose of digital skepticism!** 🔮✨
